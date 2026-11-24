@@ -6,6 +6,7 @@ import {
   FileText,
   HeartPulse,
   MessageCircle,
+  Pencil,
   Pill,
   Plus,
   Search,
@@ -21,30 +22,42 @@ import {
   formatDateBR,
   getInitials,
 } from '../utils/formatters';
+import { ConfirmDeleteModal } from './ConfirmDeleteModal';
 
 interface PatientsViewProps {
   patients: Patient[];
   reports: ConsultationReport[];
+  professionalName: string;
   selectedPatientId: string | null;
   onSelectPatient: (id: string | null) => void;
   onAddPatient: (patient: Omit<Patient, 'id'>) => void;
   onUpdatePatient: (patient: Patient) => void;
+  onDeletePatient: (patientId: string) => void;
   onStartConsultationForPatient: (patientId: string) => void;
   onOpenReport: (reportId: string) => void;
+  onDeleteReport: (reportId: string) => void;
 }
 
 export const PatientsView: React.FC<PatientsViewProps> = ({
   patients,
   reports,
+  professionalName,
   selectedPatientId,
   onSelectPatient,
   onAddPatient,
   onUpdatePatient,
+  onDeletePatient,
   onStartConsultationForPatient,
   onOpenReport,
+  onDeleteReport,
 }) => {
   const [search, setSearch] = useState('');
   const [showNewPatientModal, setShowNewPatientModal] = useState(false);
+
+  // Confirm delete states
+  const [patientToDelete, setPatientToDelete] = useState<Patient | null>(null);
+  const [reportToDelete, setReportToDelete] =
+    useState<ConsultationReport | null>(null);
 
   // New patient modal form state
   const [newName, setNewName] = useState('');
@@ -67,6 +80,14 @@ export const PatientsView: React.FC<PatientsViewProps> = ({
   // Inline add allergy inside detail view
   const [newAllergyInput, setNewAllergyInput] = useState('');
   const [showAddAllergy, setShowAddAllergy] = useState(false);
+
+  // Inline add diagnosis inside detail view
+  const [newDiagnosisInput, setNewDiagnosisInput] = useState('');
+  const [showAddDiagnosis, setShowAddDiagnosis] = useState(false);
+
+  // Inline edit notes inside detail view
+  const [editingNotes, setEditingNotes] = useState(false);
+  const [notesDraft, setNotesDraft] = useState('');
 
   const filteredPatients = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -182,28 +203,89 @@ export const PatientsView: React.FC<PatientsViewProps> = ({
     setShowAddAllergy(false);
   };
 
+  const handleRemoveAllergy = (idx: number) => {
+    if (!selectedPatient) return;
+    onUpdatePatient({
+      ...selectedPatient,
+      allergies: selectedPatient.allergies.filter((_, i) => i !== idx),
+    });
+  };
+
+  const handleAddDiagnosis = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedPatient || !newDiagnosisInput.trim()) return;
+    onUpdatePatient({
+      ...selectedPatient,
+      diagnoses: [...selectedPatient.diagnoses, newDiagnosisInput.trim()],
+    });
+    setNewDiagnosisInput('');
+    setShowAddDiagnosis(false);
+  };
+
+  const handleRemoveDiagnosis = (idx: number) => {
+    if (!selectedPatient) return;
+    onUpdatePatient({
+      ...selectedPatient,
+      diagnoses: selectedPatient.diagnoses.filter((_, i) => i !== idx),
+    });
+  };
+
+  const handleSaveNotes = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedPatient) return;
+    onUpdatePatient({
+      ...selectedPatient,
+      notes: notesDraft.trim(),
+    });
+    setEditingNotes(false);
+  };
+
+  const handleClearNotes = () => {
+    if (!selectedPatient) return;
+    onUpdatePatient({
+      ...selectedPatient,
+      notes: '',
+    });
+    setNotesDraft('');
+    setEditingNotes(false);
+  };
+
   // DETAIL VIEW
   if (selectedPatient) {
     return (
-      <div className="space-y-5">
-        <div className="flex items-center justify-between gap-3">
+      <div className="space-y-5 animate-view-enter">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <button
             type="button"
-            onClick={() => onSelectPatient(null)}
+            onClick={() => {
+              setEditingNotes(false);
+              onSelectPatient(null);
+            }}
             className="min-h-[44px] px-3 -ml-2 inline-flex items-center gap-2 text-sm font-semibold text-slate-700 hover:text-[#0F766E] rounded-xl hover:bg-white transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             <span>Todos os Pacientes</span>
           </button>
 
-          <button
-            type="button"
-            onClick={() => onStartConsultationForPatient(selectedPatient.id)}
-            className="min-h-[44px] px-4 py-2 rounded-xl bg-[#0F766E] hover:bg-teal-800 text-white text-xs sm:text-sm font-semibold inline-flex items-center gap-2 whitespace-nowrap transition-colors"
-          >
-            <Stethoscope className="w-4 h-4 shrink-0" />
-            <span>Nova Consulta</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setPatientToDelete(selectedPatient)}
+              className="min-h-[44px] px-3.5 py-2 rounded-xl border border-red-200 bg-white hover:bg-red-50 text-red-700 text-xs sm:text-sm font-semibold inline-flex items-center gap-1.5 whitespace-nowrap transition-colors"
+            >
+              <Trash2 className="w-4 h-4 shrink-0" />
+              <span>Excluir Paciente</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onStartConsultationForPatient(selectedPatient.id)}
+              className="min-h-[44px] px-4 py-2 rounded-xl bg-[#0F766E] hover:bg-teal-800 text-white text-xs sm:text-sm font-semibold inline-flex items-center gap-2 whitespace-nowrap transition-colors"
+            >
+              <Stethoscope className="w-4 h-4 shrink-0" />
+              <span>Nova Consulta</span>
+            </button>
+          </div>
         </div>
 
         {/* Patient Header Card */}
@@ -229,7 +311,7 @@ export const PatientsView: React.FC<PatientsViewProps> = ({
             <a
               href={buildWhatsAppLink(
                 selectedPatient.familyPhone,
-                `Olá ${selectedPatient.familyContactName}, aqui é a Enf. Débora Gomes sobre o acompanhamento de ${selectedPatient.name}.`
+                `Olá ${selectedPatient.familyContactName}, aqui é ${professionalName} sobre o acompanhamento de ${selectedPatient.name}.`
               )}
               target="_blank"
               rel="noopener noreferrer"
@@ -292,10 +374,20 @@ export const PatientsView: React.FC<PatientsViewProps> = ({
               {selectedPatient.allergies.map((allergy, idx) => (
                 <li
                   key={idx}
-                  className="text-sm font-semibold text-red-950 flex items-start gap-2"
+                  className="text-sm font-semibold text-red-950 flex items-center justify-between gap-2 bg-white/60 border border-red-200/70 rounded-xl px-3 py-2"
                 >
-                  <ShieldAlert className="w-4 h-4 text-red-700 shrink-0 mt-0.5" />
-                  <span>{allergy}</span>
+                  <span className="flex items-start gap-2 min-w-0">
+                    <ShieldAlert className="w-4 h-4 text-red-700 shrink-0 mt-0.5" />
+                    <span>{allergy}</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveAllergy(idx)}
+                    aria-label={`Remover alergia ${allergy}`}
+                    className="min-h-[36px] min-w-[36px] flex items-center justify-center rounded-lg text-red-700/70 hover:text-red-900 hover:bg-red-100 transition-colors shrink-0"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </li>
               ))}
             </ul>
@@ -322,14 +414,42 @@ export const PatientsView: React.FC<PatientsViewProps> = ({
 
         {/* Diagnoses + Continuous Medications Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-          {/* Diagnoses */}
-          <section className="lg:col-span-5 bg-white rounded-2xl border border-slate-200/80 shadow-xs p-5 space-y-3">
-            <div className="flex items-center gap-2">
-              <HeartPulse className="w-5 h-5 text-[#1E3A8A]" />
-              <h2 className="text-base font-bold text-slate-900">
-                Diagnósticos Principais
-              </h2>
+          {/* Diagnoses & Nursing Notes */}
+          <section className="lg:col-span-5 bg-white rounded-2xl border border-slate-200/80 shadow-xs p-5 space-y-4">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <HeartPulse className="w-5 h-5 text-[#1E3A8A]" />
+                <h2 className="text-base font-bold text-slate-900">
+                  Diagnósticos Principais
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAddDiagnosis(!showAddDiagnosis)}
+                className="min-h-[40px] px-3 rounded-xl border border-slate-200 hover:bg-slate-50 text-xs font-semibold text-[#1E3A8A] inline-flex items-center gap-1 whitespace-nowrap"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Adicionar</span>
+              </button>
             </div>
+
+            {showAddDiagnosis && (
+              <form onSubmit={handleAddDiagnosis} className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Ex: Doença Renal Crônica"
+                  value={newDiagnosisInput}
+                  onChange={(e) => setNewDiagnosisInput(e.target.value)}
+                  className="flex-1 min-h-[44px] px-3 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-teal-700"
+                />
+                <button
+                  type="submit"
+                  className="min-h-[44px] px-4 rounded-xl bg-[#1E3A8A] text-white text-xs font-semibold whitespace-nowrap"
+                >
+                  Salvar
+                </button>
+              </form>
+            )}
 
             {selectedPatient.diagnoses.length === 0 ? (
               <p className="text-sm text-slate-500">
@@ -340,24 +460,83 @@ export const PatientsView: React.FC<PatientsViewProps> = ({
                 {selectedPatient.diagnoses.map((diag, idx) => (
                   <li
                     key={idx}
-                    className="py-2.5 first:pt-1 last:pb-1 text-sm font-medium text-slate-800"
+                    className="py-2 first:pt-0 last:pb-0 text-sm font-medium text-slate-800 flex items-center justify-between gap-2"
                   >
-                    {diag}
+                    <span className="min-w-0">{diag}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveDiagnosis(idx)}
+                      aria-label={`Remover diagnóstico ${diag}`}
+                      className="min-h-[36px] min-w-[36px] flex items-center justify-center rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors shrink-0"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </li>
                 ))}
               </ul>
             )}
 
-            {selectedPatient.notes && (
-              <div className="pt-2 border-t border-slate-100">
-                <span className="text-xs font-semibold text-slate-500 block mb-1">
-                  Observações de Enfermagem
+            {/* Notes block with edit & clear */}
+            <div className="pt-3 border-t border-slate-100 space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-semibold text-slate-500">
+                  Observações Assistenciais
                 </span>
-                <p className="text-xs text-slate-600 leading-relaxed">
-                  {selectedPatient.notes}
-                </p>
+                <div className="flex items-center gap-1.5">
+                  {selectedPatient.notes && !editingNotes && (
+                    <button
+                      type="button"
+                      onClick={handleClearNotes}
+                      className="text-xs font-medium text-red-600 hover:text-red-700 px-2 py-1 rounded-lg hover:bg-red-50 transition-colors"
+                    >
+                      Limpar
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNotesDraft(selectedPatient.notes ?? '');
+                      setEditingNotes(!editingNotes);
+                    }}
+                    className="text-xs font-semibold text-[#0F766E] hover:bg-teal-50 px-2 py-1 rounded-lg inline-flex items-center gap-1 transition-colors"
+                  >
+                    <Pencil className="w-3 h-3" />
+                    <span>{editingNotes ? 'Fechar' : 'Editar'}</span>
+                  </button>
+                </div>
               </div>
-            )}
+
+              {editingNotes ? (
+                <form onSubmit={handleSaveNotes} className="space-y-2">
+                  <textarea
+                    rows={3}
+                    value={notesDraft}
+                    onChange={(e) => setNotesDraft(e.target.value)}
+                    placeholder="Anotações sobre mobilidade, cuidadores ou orientações..."
+                    className="w-full p-3 rounded-xl border border-slate-300 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-teal-700"
+                  />
+                  <div className="flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setEditingNotes(false)}
+                      className="min-h-[38px] px-3 rounded-xl border border-slate-200 text-xs font-medium text-slate-600"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      className="min-h-[38px] px-3.5 rounded-xl bg-[#0F766E] text-white text-xs font-semibold"
+                    >
+                      Salvar Nota
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  {selectedPatient.notes || 'Sem observações adicionais registradas.'}
+                </p>
+              )}
+            </div>
           </section>
 
           {/* Continuous Medications */}
@@ -492,41 +671,89 @@ export const PatientsView: React.FC<PatientsViewProps> = ({
           ) : (
             <div className="divide-y divide-slate-100">
               {patientReports.map((rep) => (
-                <button
+                <div
                   key={rep.id}
-                  type="button"
-                  onClick={() => onOpenReport(rep.id)}
-                  className="w-full py-4 first:pt-1 last:pb-1 text-left flex items-center justify-between gap-4 hover:bg-slate-50/80 rounded-xl px-2 -mx-2 transition-colors"
+                  className="py-3 first:pt-1 last:pb-1 flex items-center justify-between gap-2"
                 >
-                  <div className="flex items-start gap-3.5 min-w-0">
-                    <div className="w-10 h-10 rounded-xl bg-blue-50 text-[#1E3A8A] flex items-center justify-center shrink-0">
-                      <FileText className="w-5 h-5" />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="text-sm font-bold text-slate-900">
-                        {rep.specialty} · {rep.doctorName}
+                  <button
+                    type="button"
+                    onClick={() => onOpenReport(rep.id)}
+                    className="flex-1 min-w-0 text-left flex items-center justify-between gap-3 hover:bg-slate-50/80 rounded-xl p-2 -ml-2 transition-colors"
+                  >
+                    <div className="flex items-start gap-3.5 min-w-0">
+                      <div className="w-10 h-10 rounded-xl bg-blue-50 text-[#1E3A8A] flex items-center justify-center shrink-0">
+                        <FileText className="w-5 h-5" />
                       </div>
-                      <div className="text-xs text-slate-500 tabular-nums mt-0.5">
-                        Atendimento em {formatDateBR(rep.date)}
+                      <div className="min-w-0">
+                        <div className="text-sm font-bold text-slate-900">
+                          {rep.specialty} · {rep.doctorName}
+                        </div>
+                        <div className="text-xs text-slate-500 tabular-nums mt-0.5">
+                          Atendimento em {formatDateBR(rep.date)}
+                        </div>
+                        <p className="text-xs text-slate-600 line-clamp-1 mt-1">
+                          {rep.medicalSummary}
+                        </p>
                       </div>
-                      <p className="text-xs text-slate-600 line-clamp-1 mt-1">
-                        {rep.medicalSummary}
-                      </p>
                     </div>
-                  </div>
-                  <ChevronRight className="w-5 h-5 text-slate-400 shrink-0" />
-                </button>
+                    <ChevronRight className="w-5 h-5 text-slate-400 shrink-0" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setReportToDelete(rep)}
+                    aria-label={`Excluir relatório de ${rep.specialty}`}
+                    title="Excluir relatório"
+                    className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-slate-400 hover:text-red-700 hover:bg-red-50 transition-colors shrink-0"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
               ))}
             </div>
           )}
         </section>
+
+        <ConfirmDeleteModal
+          open={Boolean(patientToDelete)}
+          title="Excluir Paciente"
+          description={
+            patientToDelete
+              ? `Deseja excluir ${patientToDelete.name}? Todos os compromissos, relatórios de consultas e solicitações de convênio vinculados a este paciente também serão removidos.`
+              : ''
+          }
+          confirmLabel="Excluir Paciente"
+          onClose={() => setPatientToDelete(null)}
+          onConfirm={() => {
+            if (patientToDelete) {
+              onDeletePatient(patientToDelete.id);
+            }
+          }}
+        />
+
+        <ConfirmDeleteModal
+          open={Boolean(reportToDelete)}
+          title="Excluir Relatório de Consulta"
+          description={
+            reportToDelete
+              ? `Deseja excluir o relatório de ${reportToDelete.specialty} (${formatDateBR(reportToDelete.date)})?`
+              : ''
+          }
+          confirmLabel="Excluir Relatório"
+          onClose={() => setReportToDelete(null)}
+          onConfirm={() => {
+            if (reportToDelete) {
+              onDeleteReport(reportToDelete.id);
+            }
+          }}
+        />
       </div>
     );
   }
 
   // LIST VIEW
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 animate-view-enter">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
@@ -563,15 +790,25 @@ export const PatientsView: React.FC<PatientsViewProps> = ({
       {filteredPatients.length === 0 ? (
         <div className="bg-white rounded-2xl border border-slate-200 p-10 text-center space-y-3">
           <p className="text-sm text-slate-500">
-            Nenhum paciente encontrado para "{search}".
+            {search
+              ? `Nenhum paciente encontrado para "${search}".`
+              : 'Nenhum paciente cadastrado.'}
           </p>
-          {search && (
+          {search ? (
             <button
               type="button"
               onClick={() => setSearch('')}
               className="min-h-[44px] px-4 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700"
             >
               Limpar Busca
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowNewPatientModal(true)}
+              className="min-h-[44px] px-4 rounded-xl bg-teal-50 text-[#0F766E] text-xs font-semibold"
+            >
+              + Cadastrar Primeiro Paciente
             </button>
           )}
         </div>
@@ -584,7 +821,7 @@ export const PatientsView: React.FC<PatientsViewProps> = ({
             return (
               <div
                 key={patient.id}
-                className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-5 flex flex-col justify-between gap-4 hover:border-teal-300 transition-colors"
+                className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-5 flex flex-col justify-between gap-4 hover:border-teal-300 transition-all duration-150"
               >
                 <div className="space-y-3">
                   <button
@@ -635,7 +872,16 @@ export const PatientsView: React.FC<PatientsViewProps> = ({
                     {repCount === 1 ? 'relatório' : 'relatórios'}
                   </span>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setPatientToDelete(patient)}
+                      aria-label={`Excluir ${patient.name}`}
+                      title="Excluir paciente"
+                      className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-xl text-slate-400 hover:text-red-700 hover:bg-red-50 transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                     <a
                       href={buildWhatsAppLink(patient.familyPhone)}
                       target="_blank"
@@ -663,12 +909,12 @@ export const PatientsView: React.FC<PatientsViewProps> = ({
       {/* Modal: + Novo Paciente */}
       {showNewPatientModal && (
         <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-slate-900/50 backdrop-blur-xs p-0 sm:p-4"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-slate-900/50 backdrop-blur-xs p-0 sm:p-4 animate-backdrop-enter"
           role="dialog"
           aria-modal="true"
           aria-labelledby="new-patient-title"
         >
-          <div className="w-full sm:max-w-xl bg-white rounded-t-3xl sm:rounded-2xl shadow-xl border border-slate-200 p-6 max-h-[90vh] overflow-y-auto space-y-4">
+          <div className="w-full sm:max-w-xl bg-white rounded-t-3xl sm:rounded-2xl shadow-xl border border-slate-200 p-6 max-h-[90vh] overflow-y-auto space-y-4 animate-modal-enter">
             <div className="flex items-center justify-between">
               <h3
                 id="new-patient-title"
@@ -833,6 +1079,23 @@ export const PatientsView: React.FC<PatientsViewProps> = ({
           </div>
         </div>
       )}
+
+      <ConfirmDeleteModal
+        open={Boolean(patientToDelete)}
+        title="Excluir Paciente"
+        description={
+          patientToDelete
+            ? `Deseja excluir ${patientToDelete.name}? Todos os compromissos, relatórios de consultas e solicitações de convênio vinculados a este paciente também serão removidos.`
+            : ''
+        }
+        confirmLabel="Excluir Paciente"
+        onClose={() => setPatientToDelete(null)}
+        onConfirm={() => {
+          if (patientToDelete) {
+            onDeletePatient(patientToDelete.id);
+          }
+        }}
+      />
     </div>
   );
 };

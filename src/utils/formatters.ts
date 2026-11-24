@@ -24,9 +24,22 @@ export function getInitials(name: string): string {
     .replace(/^(Sr\.|Sra\.|Dona|Dr\.|Dra\.|Enf\.)\s+/i, '')
     .trim();
   const words = cleaned.split(/\s+/).filter(Boolean);
-  if (words.length === 0) return 'PA';
+  if (words.length === 0) return 'PS';
   if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
   return `${words[0][0]}${words[words.length - 1][0]}`.toUpperCase();
+}
+
+export function getProfessionalDisplayName(
+  displayName: string | null | undefined,
+  email?: string | null
+): string {
+  const trimmed = displayName?.trim();
+  if (trimmed) return trimmed;
+  if (email?.trim()) {
+    const local = email.split('@')[0]?.trim();
+    if (local) return local;
+  }
+  return 'Profissional de Saúde';
 }
 
 export function buildWhatsAppLink(phone: string, message?: string): string {
@@ -40,11 +53,12 @@ export function buildWhatsAppLink(phone: string, message?: string): string {
 
 export function formatReportForWhatsApp(
   report: ConsultationReport,
-  patient: Patient
+  patient: Patient,
+  professionalName = 'Profissional de Saúde'
 ): string {
   const lines = [
     `🩺 *RELATÓRIO DE ACOMPANHAMENTO EM SAÚDE*`,
-    `_CareAudit · Enf. Débora Gomes (Auditora & Consultora)_`,
+    `_CareAudit · ${professionalName}_`,
     ``,
     `👤 *Paciente:* ${patient.name} (${patient.age} anos)`,
     `📅 *Data da Consulta:* ${formatDateBR(report.date)}`,
@@ -67,7 +81,7 @@ export function formatReportForWhatsApp(
     report.nextStepsAndReturn.trim(),
     ``,
     `Qualquer dúvida sobre as orientações ou autorizações do convênio, estou à disposição!`,
-    `*Enf. Débora Gomes* · Consultoria & Auditoria em Saúde`,
+    `*${professionalName}* · CareAudit`,
   ];
 
   return lines.join('\n');

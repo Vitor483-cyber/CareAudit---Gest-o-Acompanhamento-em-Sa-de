@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import {
   AlertTriangle,
   CheckCircle2,
+  Eraser,
   FileText,
   Pill,
   Stethoscope,
@@ -17,6 +18,7 @@ interface ConsultationFormViewProps {
     linkedAppointmentId?: string
   ) => void;
   onClearPrefill: () => void;
+  onCancel: () => void;
 }
 
 export const ConsultationFormView: React.FC<ConsultationFormViewProps> = ({
@@ -25,6 +27,7 @@ export const ConsultationFormView: React.FC<ConsultationFormViewProps> = ({
   prefillPatientId,
   onSaveReport,
   onClearPrefill,
+  onCancel,
 }) => {
   const todayISO = new Date().toISOString().slice(0, 10);
 
@@ -60,6 +63,19 @@ export const ConsultationFormView: React.FC<ConsultationFormViewProps> = ({
   }, [prefillAppointment, prefillPatientId]);
 
   const selectedPatient = patients.find((p) => p.id === patientId);
+
+  const handleClearForm = () => {
+    setDate(todayISO);
+    setSpecialty('');
+    setDoctorName('');
+    setReasonAndComplaints('');
+    setMedicalSummary('');
+    setMedicationChanges('');
+    setRequestedExams('');
+    setNextStepsAndReturn('');
+    setError('');
+    onClearPrefill();
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -97,17 +113,24 @@ export const ConsultationFormView: React.FC<ConsultationFormViewProps> = ({
 
   if (patients.length === 0) {
     return (
-      <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center">
+      <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center space-y-3 animate-view-enter">
         <p className="text-sm text-slate-600">
           Cadastre pelo menos um paciente antes de registrar uma consulta.
         </p>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="min-h-[44px] px-4 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+        >
+          Voltar
+        </button>
       </div>
     );
   }
 
   return (
-    <div className="space-y-5 max-w-4xl mx-auto">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+    <div className="space-y-5 max-w-4xl mx-auto animate-view-enter">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
             Nova Consulta &amp; Relatório Familiar
@@ -117,15 +140,16 @@ export const ConsultationFormView: React.FC<ConsultationFormViewProps> = ({
           </p>
         </div>
 
-        {prefillAppointment && (
+        <div className="flex items-center gap-2 self-start sm:self-auto">
           <button
             type="button"
-            onClick={onClearPrefill}
-            className="self-start min-h-[40px] px-3 rounded-xl border border-slate-200 bg-white text-xs font-medium text-slate-600 hover:bg-slate-50"
+            onClick={handleClearForm}
+            className="min-h-[40px] px-3 rounded-xl border border-slate-200 bg-white text-xs font-medium text-slate-600 hover:text-red-700 hover:bg-red-50 hover:border-red-200 inline-flex items-center gap-1.5 transition-colors whitespace-nowrap"
           >
-            Limpar pré-preenchimento
+            <Eraser className="w-3.5 h-3.5" />
+            <span>Limpar Formulário</span>
           </button>
-        )}
+        </div>
       </div>
 
       {/* Patient Quick Clinical Context (Allergies & Current Meds) */}
@@ -360,10 +384,17 @@ export const ConsultationFormView: React.FC<ConsultationFormViewProps> = ({
           </div>
         </section>
 
-        <div className="pt-1 pb-4">
+        <div className="pt-1 pb-4 flex flex-col-reverse sm:flex-row gap-3">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="min-h-[52px] px-6 py-3.5 rounded-2xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-sm font-semibold transition-colors whitespace-nowrap"
+          >
+            Cancelar
+          </button>
           <button
             type="submit"
-            className="w-full min-h-[52px] px-6 py-3.5 rounded-2xl bg-[#0F766E] hover:bg-teal-800 text-white text-base font-bold shadow-sm transition-colors flex items-center justify-center gap-2.5"
+            className="flex-1 min-h-[52px] px-6 py-3.5 rounded-2xl bg-[#0F766E] hover:bg-teal-800 text-white text-base font-bold shadow-sm transition-colors flex items-center justify-center gap-2.5"
           >
             <FileText className="w-5 h-5" />
             <span>Salvar e Gerar Relatório Profissional</span>

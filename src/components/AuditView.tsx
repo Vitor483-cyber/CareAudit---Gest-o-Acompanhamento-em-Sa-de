@@ -4,19 +4,23 @@ import {
   CheckCircle2,
   CheckSquare,
   Clock,
+  Eraser,
   Plus,
   ShieldCheck,
   Square,
+  Trash2,
   X,
 } from 'lucide-react';
 import { AuditStatus, InsuranceAuditItem, Patient } from '../types';
 import { formatDateBR } from '../utils/formatters';
+import { ConfirmDeleteModal } from './ConfirmDeleteModal';
 
 interface AuditViewProps {
   audits: InsuranceAuditItem[];
   patients: Patient[];
   onUpdateAudit: (audit: InsuranceAuditItem) => void;
   onAddAudit: (audit: Omit<InsuranceAuditItem, 'id'>) => void;
+  onDeleteAudit: (auditId: string) => void;
 }
 
 const STATUS_OPTIONS: AuditStatus[] = [
@@ -59,12 +63,15 @@ export const AuditView: React.FC<AuditViewProps> = ({
   patients,
   onUpdateAudit,
   onAddAudit,
+  onDeleteAudit,
 }) => {
   const [statusFilter, setStatusFilter] = useState<'Todos' | AuditStatus>(
     'Todos'
   );
   const [patientFilter, setPatientFilter] = useState<string>('all');
   const [showNewModal, setShowNewModal] = useState(false);
+  const [auditToDelete, setAuditToDelete] =
+    useState<InsuranceAuditItem | null>(null);
 
   // Add checklist step inline state per audit item
   const [newStepTextById, setNewStepTextById] = useState<Record<string, string>>(
@@ -100,6 +107,16 @@ export const AuditView: React.FC<AuditViewProps> = ({
     });
   };
 
+  const handleDeleteChecklistStep = (
+    audit: InsuranceAuditItem,
+    itemId: string
+  ) => {
+    onUpdateAudit({
+      ...audit,
+      checklist: audit.checklist.filter((item) => item.id !== itemId),
+    });
+  };
+
   const handleAddChecklistStep = (
     e: React.FormEvent,
     audit: InsuranceAuditItem
@@ -115,6 +132,13 @@ export const AuditView: React.FC<AuditViewProps> = ({
       ],
     });
     setNewStepTextById((prev) => ({ ...prev, [audit.id]: '' }));
+  };
+
+  const handleClearNotes = (audit: InsuranceAuditItem) => {
+    onUpdateAudit({
+      ...audit,
+      technicalNotes: '',
+    });
   };
 
   const handleCreateAudit = (e: React.FormEvent) => {
@@ -156,7 +180,7 @@ export const AuditView: React.FC<AuditViewProps> = ({
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 animate-view-enter">
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
@@ -170,11 +194,12 @@ export const AuditView: React.FC<AuditViewProps> = ({
 
         <button
           type="button"
+          disabled={patients.length === 0}
           onClick={() => {
             setNewPatientId(patients[0]?.id ?? '');
             setShowNewModal(true);
           }}
-          className="min-h-[48px] px-5 py-2.5 rounded-xl bg-[#0F766E] hover:bg-teal-800 text-white text-sm font-semibold inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0 shadow-xs transition-colors"
+          className="min-h-[48px] px-5 py-2.5 rounded-xl bg-[#0F766E] hover:bg-teal-800 disabled:opacity-50 text-white text-sm font-semibold inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0 shadow-xs transition-colors"
         >
           <Plus className="w-4 h-4 shrink-0" />
           <span>Nova Solicitação</span>
@@ -228,16 +253,18 @@ export const AuditView: React.FC<AuditViewProps> = ({
           <p className="text-sm text-slate-500">
             Nenhuma solicitação encontrada com os filtros selecionados.
           </p>
-          <button
-            type="button"
-            onClick={() => {
-              setStatusFilter('Todos');
-              setPatientFilter('all');
-            }}
-            className="min-h-[44px] px-4 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700"
-          >
-            Mostrar Todas
-          </button>
+          {(statusFilter !== 'Todos' || patientFilter !== 'all') && (
+            <button
+              type="button"
+              onClick={() => {
+                setStatusFilter('Todos');
+                setPatientFilter('all');
+              }}
+              className="min-h-[44px] px-4 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700"
+            >
+              Mostrar Todas
+            </button>
+          )}
         </div>
       ) : (
         <div className="space-y-4">
@@ -250,7 +277,7 @@ export const AuditView: React.FC<AuditViewProps> = ({
             return (
               <article
                 key={audit.id}
-                className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-5 sm:p-6 space-y-5"
+                className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-5 sm:p-6 space-y-5 transition-all duration-150"
               >
                 {/* Top Header */}
                 <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
@@ -274,13 +301,25 @@ export const AuditView: React.FC<AuditViewProps> = ({
                     </div>
                   </div>
 
-                  {/* Status Selector & Semantic Indicator */}
-                  <div className="flex flex-col sm:flex-row lg:flex-col items-stretch sm:items-center lg:items-end gap-2 shrink-0">
-                    <div
-                      className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-bold ${badge.classes}`}
-                    >
-                      <StatusIcon className="w-4 h-4 shrink-0" />
-                      <span>{audit.status}</span>
+                  {/* Status Selector, Semantic Indicator & Delete */}
+                  <div className="flex flex-wrap sm:flex-nowrap lg:flex-col items-center sm:items-center lg:items-end gap-2 shrink-0">
+                    <div className="flex items-center gap-2">
+                      <div
+                        className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-bold ${badge.classes}`}
+                      >
+                        <StatusIcon className="w-4 h-4 shrink-0" />
+                        <span>{audit.status}</span>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setAuditToDelete(audit)}
+                        aria-label={`Excluir solicitação ${audit.title}`}
+                        title="Excluir solicitação"
+                        className="min-h-[38px] min-w-[38px] flex items-center justify-center rounded-xl border border-slate-200 text-slate-400 hover:text-red-700 hover:bg-red-50 hover:border-red-200 transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
 
                     <select
@@ -316,30 +355,51 @@ export const AuditView: React.FC<AuditViewProps> = ({
                       </span>
                     </div>
 
-                    <div className="space-y-1.5">
-                      {audit.checklist.map((item) => (
-                        <button
-                          key={item.id}
-                          type="button"
-                          onClick={() => handleToggleChecklist(audit, item.id)}
-                          className="w-full min-h-[42px] px-2.5 py-2 rounded-xl hover:bg-slate-50 text-left flex items-start gap-2.5 transition-colors"
-                        >
-                          {item.done ? (
-                            <CheckSquare className="w-4 h-4 text-[#0F766E] shrink-0 mt-0.5" />
-                          ) : (
-                            <Square className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
-                          )}
-                          <span
-                            className={`text-xs sm:text-sm leading-snug ${
-                              item.done
-                                ? 'line-through text-slate-400'
-                                : 'text-slate-800'
-                            }`}
+                    <div className="space-y-1">
+                      {audit.checklist.length === 0 ? (
+                        <p className="text-xs text-slate-400 py-2">
+                          Nenhuma etapa cadastrada. Adicione uma abaixo.
+                        </p>
+                      ) : (
+                        audit.checklist.map((item) => (
+                          <div
+                            key={item.id}
+                            className="flex items-start gap-1 rounded-xl hover:bg-slate-50 transition-colors"
                           >
-                            {item.label}
-                          </span>
-                        </button>
-                      ))}
+                            <button
+                              type="button"
+                              onClick={() => handleToggleChecklist(audit, item.id)}
+                              className="flex-1 min-h-[42px] px-2.5 py-2 text-left flex items-start gap-2.5"
+                            >
+                              {item.done ? (
+                                <CheckSquare className="w-4 h-4 text-[#0F766E] shrink-0 mt-0.5" />
+                              ) : (
+                                <Square className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
+                              )}
+                              <span
+                                className={`text-xs sm:text-sm leading-snug ${
+                                  item.done
+                                    ? 'line-through text-slate-400'
+                                    : 'text-slate-800'
+                                }`}
+                              >
+                                {item.label}
+                              </span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleDeleteChecklistStep(audit, item.id)
+                              }
+                              aria-label={`Remover etapa ${item.label}`}
+                              title="Remover etapa"
+                              className="min-h-[38px] min-w-[38px] mt-0.5 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors shrink-0"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ))
+                      )}
                     </div>
 
                     <form
@@ -369,12 +429,24 @@ export const AuditView: React.FC<AuditViewProps> = ({
 
                   {/* Technical Audit Notes */}
                   <div className="lg:col-span-6 space-y-2">
-                    <label
-                      htmlFor={`notes-${audit.id}`}
-                      className="block text-xs font-bold text-slate-700"
-                    >
-                      Anotações Técnicas da Auditoria
-                    </label>
+                    <div className="flex items-center justify-between gap-2">
+                      <label
+                        htmlFor={`notes-${audit.id}`}
+                        className="block text-xs font-bold text-slate-700"
+                      >
+                        Anotações Técnicas da Auditoria
+                      </label>
+                      {audit.technicalNotes && (
+                        <button
+                          type="button"
+                          onClick={() => handleClearNotes(audit)}
+                          className="text-xs font-medium text-red-600 hover:text-red-800 hover:bg-red-50 px-2 py-1 rounded-lg inline-flex items-center gap-1 transition-colors"
+                        >
+                          <Eraser className="w-3 h-3" />
+                          <span>Limpar</span>
+                        </button>
+                      )}
+                    </div>
                     <textarea
                       id={`notes-${audit.id}`}
                       rows={5}
@@ -389,7 +461,7 @@ export const AuditView: React.FC<AuditViewProps> = ({
                       className="w-full p-3.5 rounded-xl border border-slate-200 bg-slate-50/60 focus:bg-white text-xs sm:text-sm text-slate-800 leading-relaxed focus:outline-none focus:ring-2 focus:ring-teal-700"
                     />
                     <p className="text-[11px] text-slate-400">
-                      Alterações salvas automaticamente no prontuário local.
+                      Alterações salvas automaticamente na nuvem.
                     </p>
                   </div>
                 </div>
@@ -402,12 +474,12 @@ export const AuditView: React.FC<AuditViewProps> = ({
       {/* Modal: + Nova Solicitação de Auditoria */}
       {showNewModal && (
         <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-slate-900/50 backdrop-blur-xs p-0 sm:p-4"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-slate-900/50 backdrop-blur-xs p-0 sm:p-4 animate-backdrop-enter"
           role="dialog"
           aria-modal="true"
           aria-labelledby="new-audit-title"
         >
-          <div className="w-full sm:max-w-lg bg-white rounded-t-3xl sm:rounded-2xl shadow-xl border border-slate-200 p-6 max-h-[90vh] overflow-y-auto space-y-4">
+          <div className="w-full sm:max-w-lg bg-white rounded-t-3xl sm:rounded-2xl shadow-xl border border-slate-200 p-6 max-h-[90vh] overflow-y-auto space-y-4 animate-modal-enter">
             <div className="flex items-center justify-between">
               <h3 id="new-audit-title" className="text-lg font-bold text-slate-900">
                 Nova Solicitação de Convênio
@@ -550,6 +622,23 @@ export const AuditView: React.FC<AuditViewProps> = ({
           </div>
         </div>
       )}
+
+      <ConfirmDeleteModal
+        open={Boolean(auditToDelete)}
+        title="Excluir Solicitação de Convênio"
+        description={
+          auditToDelete
+            ? `Deseja excluir "${auditToDelete.title}" (Protocolo ${auditToDelete.protocolNumber}) e todo o seu checklist?`
+            : ''
+        }
+        confirmLabel="Excluir Solicitação"
+        onClose={() => setAuditToDelete(null)}
+        onConfirm={() => {
+          if (auditToDelete) {
+            onDeleteAudit(auditToDelete.id);
+          }
+        }}
+      />
     </div>
   );
 };

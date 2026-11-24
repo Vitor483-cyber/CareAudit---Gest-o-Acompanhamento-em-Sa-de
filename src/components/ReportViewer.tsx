@@ -6,6 +6,7 @@ import {
   Copy,
   Printer,
   ShieldCheck,
+  Trash2,
 } from 'lucide-react';
 import { ConsultationReport, Patient } from '../types';
 import {
@@ -14,22 +15,30 @@ import {
   formatLongDateBR,
   formatReportForWhatsApp,
 } from '../utils/formatters';
+import { ConfirmDeleteModal } from './ConfirmDeleteModal';
 
 interface ReportViewerProps {
   report: ConsultationReport;
   patient: Patient;
+  professionalName: string;
+  professionalEmail?: string | null;
   onBack: () => void;
+  onDeleteReport: (reportId: string) => void;
 }
 
 export const ReportViewer: React.FC<ReportViewerProps> = ({
   report,
   patient,
+  professionalName,
+  professionalEmail,
   onBack,
+  onDeleteReport,
 }) => {
   const [copied, setCopied] = useState(false);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   const handleCopyWhatsApp = async () => {
-    const formatted = formatReportForWhatsApp(report, patient);
+    const formatted = formatReportForWhatsApp(report, patient, professionalName);
     const success = await copyToClipboard(formatted);
     if (success) {
       setCopied(true);
@@ -44,7 +53,7 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
   const reportCode = report.id.toUpperCase().replace(/[^A-Z0-9-]/g, '');
 
   return (
-    <div className="space-y-5 pb-6">
+    <div className="space-y-5 pb-6 animate-view-enter">
       {/* Top Action Bar — hidden during print */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 print:hidden">
         <button
@@ -87,6 +96,15 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
             <Printer className="w-4 h-4 shrink-0" />
             <span>Imprimir / Salvar PDF</span>
           </button>
+
+          <button
+            type="button"
+            onClick={() => setConfirmDeleteOpen(true)}
+            className="min-h-[48px] px-4 py-2.5 rounded-xl border border-red-200 bg-white hover:bg-red-50 text-red-700 font-semibold text-sm inline-flex items-center justify-center gap-2 transition-colors whitespace-nowrap"
+          >
+            <Trash2 className="w-4 h-4 shrink-0" />
+            <span>Excluir</span>
+          </button>
         </div>
       </div>
 
@@ -100,10 +118,10 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
             </div>
             <div>
               <h1 className="text-lg sm:text-xl font-bold text-[#1E3A8A] tracking-tight">
-                Débora Gomes
+                {professionalName}
               </h1>
               <p className="text-sm font-medium text-[#0F766E]">
-                Enfermeira Auditora &amp; Consultora de Saúde
+                Auditoria &amp; Consultoria em Saúde
               </p>
               <p className="text-xs text-slate-500 mt-0.5">
                 CareAudit · Acompanhamento Clínico e Orientação Familiar
@@ -230,14 +248,28 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
           <div className="sm:text-right shrink-0">
             <div className="w-48 sm:ml-auto border-b border-slate-300 mb-1.5" />
             <div className="text-sm font-bold text-[#1E3A8A]">
-              Enf. Débora Gomes
+              {professionalName}
             </div>
             <div className="text-xs text-slate-600">
-              Enfermeira Auditora &amp; Consultora de Pacientes
+              Auditoria &amp; Consultoria em Saúde
             </div>
+            {professionalEmail && (
+              <div className="text-[11px] text-slate-500 mt-0.5">
+                {professionalEmail}
+              </div>
+            )}
           </div>
         </footer>
       </article>
+
+      <ConfirmDeleteModal
+        open={confirmDeleteOpen}
+        title="Excluir Relatório de Consulta"
+        description={`Deseja excluir o relatório de ${report.specialty} (${formatDateBR(report.date)}) de ${patient.name}?`}
+        confirmLabel="Excluir Relatório"
+        onClose={() => setConfirmDeleteOpen(false)}
+        onConfirm={() => onDeleteReport(report.id)}
+      />
     </div>
   );
 };

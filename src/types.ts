@@ -1,5 +1,12 @@
 export type ActiveTab = 'inicio' | 'pacientes' | 'nova-consulta' | 'auditoria';
 
+export interface UserProfile {
+  uid: string;
+  displayName: string | null;
+  email: string | null;
+  photoURL: string | null;
+}
+
 export interface Medication {
   id: string;
   name: string;

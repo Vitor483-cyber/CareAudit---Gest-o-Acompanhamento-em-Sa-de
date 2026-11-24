@@ -16,12 +16,12 @@ export const ConfirmResetModal: React.FC<ConfirmResetModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-slate-900/50 backdrop-blur-xs p-0 sm:p-4 print:hidden"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-slate-900/50 backdrop-blur-xs p-0 sm:p-4 print:hidden animate-backdrop-enter"
       role="dialog"
       aria-modal="true"
       aria-labelledby="reset-dialog-title"
     >
-      <div className="w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-2xl shadow-xl border border-slate-200 p-6 space-y-5">
+      <div className="w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-2xl shadow-xl border border-slate-200 p-6 space-y-5 animate-modal-enter">
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-teal-50 text-[#0F766E] flex items-center justify-center shrink-0">
@@ -51,8 +51,8 @@ export const ConfirmResetModal: React.FC<ConfirmResetModalProps> = ({
         </div>
 
         <p className="text-sm text-slate-600 leading-relaxed">
-          Esta ação substituirá os registros salvos atualmente neste navegador pelos 2
-          pacientes de demonstração originais (Sr. Antônio e Dona Maria), seus
+          Esta ação substituirá os registros salvos atualmente na sua conta pelos
+          2 pacientes de demonstração originais (Sr. Antônio e Dona Maria), seus
           medicamentos, relatório pronto e pendências de convênio.
         </p>
 

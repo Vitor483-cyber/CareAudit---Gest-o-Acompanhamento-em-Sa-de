@@ -14,8 +14,10 @@ import {
   ConsultationReport,
   InsuranceAuditItem,
   Patient,
+  UserProfile,
 } from './types';
 import { getInitialSeedData, STORAGE_KEY } from './data/seedData';
+import { getProfessionalDisplayName } from './utils/formatters';
 import { Navigation } from './components/Navigation';
 import { DashboardView } from './components/DashboardView';
 import { PatientsView } from './components/PatientsView';
@@ -254,6 +256,13 @@ export default function App() {
     }));
   };
 
+  const handleDeleteAppointment = (appointmentId: string) => {
+    setState((prev) => ({
+      ...prev,
+      appointments: prev.appointments.filter((a) => a.id !== appointmentId),
+    }));
+  };
+
   const handleAddPatient = (patient: Omit<Patient, 'id'>) => {
     const newPat: Patient = {
       ...patient,
@@ -271,6 +280,24 @@ export default function App() {
       ...prev,
       patients: prev.patients.map((p) => (p.id === updated.id ? updated : p)),
     }));
+  };
+
+  const handleDeletePatient = (patientId: string) => {
+    setState((prev) => ({
+      ...prev,
+      patients: prev.patients.filter((p) => p.id !== patientId),
+      appointments: prev.appointments.filter((a) => a.patientId !== patientId),
+      reports: prev.reports.filter((r) => r.patientId !== patientId),
+      audits: prev.audits.filter((au) => au.patientId !== patientId),
+    }));
+    if (selectedPatientId === patientId) {
+      setSelectedPatientId(null);
+    }
+    if (prefillPatientId === patientId) {
+      setPrefillPatientId(null);
+      setPrefillAppointment(null);
+    }
+    setActiveReportId(null);
   };
 
   const handleSaveReport = (
@@ -299,6 +326,16 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const handleDeleteReport = (reportId: string) => {
+    setState((prev) => ({
+      ...prev,
+      reports: prev.reports.filter((r) => r.id !== reportId),
+    }));
+    if (activeReportId === reportId) {
+      setActiveReportId(null);
+    }
+  };
+
   const handleUpdateAudit = (updated: InsuranceAuditItem) => {
     setState((prev) => ({
       ...prev,
@@ -314,6 +351,13 @@ export default function App() {
     setState((prev) => ({
       ...prev,
       audits: [newAudit, ...prev.audits],
+    }));
+  };
+
+  const handleDeleteAudit = (auditId: string) => {
+    setState((prev) => ({
+      ...prev,
+      audits: prev.audits.filter((a) => a.id !== auditId),
     }));
   };
 
@@ -352,6 +396,18 @@ export default function App() {
     );
   }
 
+  const userProfile: UserProfile = {
+    uid: user.uid,
+    displayName: user.displayName,
+    email: user.email,
+    photoURL: user.photoURL,
+  };
+
+  const professionalName = getProfessionalDisplayName(
+    user.displayName,
+    user.email
+  );
+
   const activeReport = activeReportId
     ? state.reports.find((r) => r.id === activeReportId) ?? null
     : null;
@@ -366,29 +422,28 @@ export default function App() {
         onSelectTab={handleSelectTab}
         onRequestReset={() => setShowResetModal(true)}
         pendingAuditsCount={pendingAuditsCount}
-        user={{
-          uid: user.uid,
-          displayName: user.displayName,
-          email: user.email,
-          photoURL: user.photoURL,
-        }}
+        user={userProfile}
         onLogout={handleLogout}
       />
 
       <main className="lg:pl-64 pb-24 lg:pb-12 print:pl-0 print:pb-0">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-8 print:p-0 print:max-w-none">
           {dataLoading ? (
-            <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center text-sm text-slate-600 shadow-xs">
+            <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center text-sm text-slate-600 shadow-xs animate-view-enter">
               Sincronizando dados de pacientes e auditorias na nuvem...
             </div>
           ) : activeReport && activeReportPatient ? (
             <ReportViewer
               report={activeReport}
               patient={activeReportPatient}
+              professionalName={professionalName}
+              professionalEmail={user.email}
               onBack={() => setActiveReportId(null)}
+              onDeleteReport={handleDeleteReport}
             />
           ) : activeTab === 'inicio' ? (
             <DashboardView
+              user={userProfile}
               patients={state.patients}
               appointments={state.appointments}
               reports={state.reports}
@@ -400,17 +455,22 @@ export default function App() {
               onOpenReport={handleOpenReport}
               onOpenPatient={handleOpenPatient}
               onAddAppointment={handleAddAppointment}
+              onDeleteAppointment={handleDeleteAppointment}
+              onDeleteReport={handleDeleteReport}
             />
           ) : activeTab === 'pacientes' ? (
             <PatientsView
               patients={state.patients}
               reports={state.reports}
+              professionalName={professionalName}
               selectedPatientId={selectedPatientId}
               onSelectPatient={setSelectedPatientId}
               onAddPatient={handleAddPatient}
               onUpdatePatient={handleUpdatePatient}
+              onDeletePatient={handleDeletePatient}
               onStartConsultationForPatient={handleStartConsultationForPatient}
               onOpenReport={handleOpenReport}
+              onDeleteReport={handleDeleteReport}
             />
           ) : activeTab === 'nova-consulta' ? (
             <ConsultationFormView
@@ -422,6 +482,7 @@ export default function App() {
                 setPrefillAppointment(null);
                 setPrefillPatientId(null);
               }}
+              onCancel={() => handleSelectTab('inicio')}
             />
           ) : (
             <AuditView
@@ -429,6 +490,7 @@ export default function App() {
               patients={state.patients}
               onUpdateAudit={handleUpdateAudit}
               onAddAudit={handleAddAudit}
+              onDeleteAudit={handleDeleteAudit}
             />
           )}
         </div>
