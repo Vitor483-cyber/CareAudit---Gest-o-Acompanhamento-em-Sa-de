@@ -1,0 +1,6 @@
+{
+  "name": "CareAudit - Gestão & Acompanhamento em Saúde",
+  "description": "Aplicativo para enfermeira auditora e consultora de pacientes gerenciar prontuários, auditorias de convênios e gerar relatórios profissionais de consultas para famílias.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
